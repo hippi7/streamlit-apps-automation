@@ -7,13 +7,14 @@ import altair as alt
 from typing import List, Dict, Any
 from pathlib import Path
 from datetime import datetime
+import json
 
 import parser
 import database
 
 # --- ここから変更 ---
 # アプリケーションのバージョンを更新
-APP_VERSION = "v1.3.0"
+APP_VERSION = "v1.4.0"
 # --- ここまで変更 ---
 
 database.init_db()
@@ -34,6 +35,34 @@ def initialize_session_state():
     if 'start_question_id' not in st.session_state: st.session_state.start_question_id = 1
     if 'excluded_question_ids' not in st.session_state: st.session_state.excluded_question_ids = set()
 
+def get_exclusion_filepath(md_filepath: str) -> Path:
+    """Markdownファイルのパスから、対応する除外設定ファイルのパスを生成する"""
+    p = Path(md_filepath)
+    return p.with_suffix('.excluded.json')
+
+def save_excluded_ids(md_filepath: str, excluded_ids: set):
+    """除外IDのセットをJSONファイルに保存する"""
+    if not md_filepath: return
+    filepath = get_exclusion_filepath(md_filepath)
+    try:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            # setは直接JSONにできないため、listに変換して保存
+            json.dump(list(excluded_ids), f, indent=2)
+    except Exception as e:
+        st.error(f"除外設定の保存中にエラーが発生しました: {e}")
+
+def load_excluded_ids(md_filepath: str) -> set:
+    """JSONファイルから除外IDのセットを読み込む"""
+    if not md_filepath: return set()
+    filepath = get_exclusion_filepath(md_filepath)
+    if filepath.exists():
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                # 読み込んだlistをsetに変換して返す
+                return set(json.load(f))
+        except Exception as e:
+            st.warning(f"除外設定の読み込み中にエラーが発生しました: {e}")
+    return set()
 
 def reset_test_state():
     """テスト関連の状態のみをリセットし、トップページに戻る"""
@@ -126,6 +155,8 @@ def render_start_page():
                             st.session_state.raw_content = content
                             st.session_state.all_questions_from_file, _ = parser.parse_md_content(content, debug=False)
                             st.session_state.loaded_file_path = str(selected_file_path)
+                            # 読み込んだファイルに対応する除外設定をロードする
+                            st.session_state.excluded_question_ids = load_excluded_ids(str(selected_file_path))
                         if not st.session_state.all_questions_from_file:
                             st.error("問題ファイルから問題を読み込めませんでした。")
                             st.session_state.all_questions_from_file = None
@@ -145,6 +176,8 @@ def render_start_page():
                         st.session_state.raw_content = content
                         st.session_state.all_questions_from_file, _ = parser.parse_md_content(content, debug=False)
                         st.session_state.loaded_file_path = uploaded_file.name
+                        # アップロード時は物理パスがないため永続化せず、設定をリセット
+                        st.session_state.excluded_question_ids = set()
                     if not st.session_state.all_questions_from_file:
                         st.error("問題ファイルから問題を読み込めませんでした。")
                         st.session_state.all_questions_from_file = None
@@ -176,7 +209,8 @@ def render_start_page():
                         st.rerun()
                 
                 st.divider()
-
+                
+                settings_changed = False
                 for q in sorted(all_questions, key=lambda x: x['id']):
                     q_id = q['id']
                     is_excluded = q_id in excluded_ids
@@ -189,8 +223,15 @@ def render_start_page():
 
                     if newly_excluded and not is_excluded:
                         st.session_state.excluded_question_ids.add(q_id)
+                        settings_changed = True
                     elif not newly_excluded and is_excluded:
                         st.session_state.excluded_question_ids.remove(q_id)
+                        settings_changed = True
+
+                # 変更があった場合のみファイルに保存する
+                if settings_changed:
+                    if source_option == 'フォルダから選択':
+                        save_excluded_ids(st.session_state.loaded_file_path, st.session_state.excluded_question_ids)
 
             col1, col2 = st.columns(2)
             with col1:
@@ -229,6 +270,11 @@ def render_start_page():
                 elif problem_mode == '指定した問題番号から開始':
                     min_q_id = min([q['id'] for q in valid_questions]) if valid_questions else 1
                     max_q_id = max([q['id'] for q in valid_questions]) if valid_questions else 1
+                    
+                    # 現在の開始問題番号が、有効な最小値を下回っている場合、最小値にリセットする
+                    if st.session_state.start_question_id < min_q_id:
+                        st.session_state.start_question_id = min_q_id
+                    
                     st.session_state.start_question_id = st.number_input(
                         '開始する問題番号:', 
                         min_value=min_q_id, 
@@ -292,14 +338,17 @@ def render_start_page():
         st.markdown(f"**現在のバージョン: {APP_VERSION}**")
         st.markdown("---")
 
-        # --- ここから変更 ---
-        # 更新履歴に新しいバージョン情報を追記
-        st.subheader(f"v1.3.0 ({datetime.now().strftime('%Y/%m/%d')})")
+        st.subheader(f"v1.4.0 ({datetime.now().strftime('%Y/%m/%d')})")
+        st.markdown("""
+        - **不具合修正:** 「指定した問題番号から開始」モードで、先頭の問題を除外するとエラーが発生する問題を修正しました。
+        - **機能追加:** 「出題対象の問題を管理」の設定が、アプリを再起動しても保持されるように永続化機能を追加しました。
+        """)
+
+        st.subheader(f"v1.3.0")
         st.markdown("""
         - **機能改善:** Streamlitサーバーの設定 (`.streamlit/config.toml`) により、非アクティブな状態でもセッションがタイムアウトしないようにしました。
         """)
-        # --- ここまで変更 ---
-
+        
         st.subheader("v1.2.0")
         st.markdown("""
         - **機能追加:** アプリのバージョンと更新履歴を確認できるタブを追加しました。
