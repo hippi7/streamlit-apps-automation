@@ -19,7 +19,7 @@ steps:
     args:
       - 'run'
       - 'deploy'
-      - 'streamlit-sample-app' # Cloud Runのサービス名
+      - 'quiz-app-autodeploy' # ★Cloud Runのサービス名
       - '--image'
       - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/streamlit-apps-automation/streamlit-app:latest'
       - '--region'
