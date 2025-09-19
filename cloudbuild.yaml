@@ -4,14 +4,14 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/my-streamlit-apps/streamlit-app:latest'
+      - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/streamlit-apps-automation/streamlit-app:latest'
       - '.'
 
   # 2. ビルドしたイメージをArtifact Registryにプッシュする
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/my-streamlit-apps/streamlit-app:latest'
+      - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/streamlit-apps-automation/streamlit-app:latest'
 
   # 3. Cloud Runにデプロイする
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -21,7 +21,7 @@ steps:
       - 'deploy'
       - 'streamlit-sample-app' # Cloud Runのサービス名
       - '--image'
-      - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/my-streamlit-apps/streamlit-app:latest'
+      - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/streamlit-apps-automation/streamlit-app:latest'
       - '--region'
       - 'asia-northeast1'
       - '--platform'
@@ -30,7 +30,8 @@ steps:
 
 # ビルドしたイメージを記録
 images:
-  - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/my-streamlit-apps/streamlit-app:latest'
+  - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/streamlit-apps-automation/streamlit-app:latest'
 
+# ビルドログの保存先を指定
 options:
   logging: CLOUD_LOGGING_ONLY
