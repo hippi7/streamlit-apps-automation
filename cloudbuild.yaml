@@ -26,8 +26,11 @@ steps:
       - 'asia-northeast1'
       - '--platform'
       - 'managed'
-      - '--allow-unauthenticated' # 誰でもアクセスできるように設定
+      - '--allow-unauthenticated'
 
 # ビルドしたイメージを記録
 images:
   - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/my-streamlit-apps/streamlit-app:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
