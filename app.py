@@ -1,6 +1,7 @@
 import streamlit as st
 
-st.title('🎈 シンプルカウンターアプリ')
+# st.title('🎈 シンプルカウンターアプリ')  <- 変更前
+st.title('🚀 自動デプロイ成功！ 🚀') # <- 変更後
 
 if 'count' not in st.session_state:
     st.session_state.count = 0
