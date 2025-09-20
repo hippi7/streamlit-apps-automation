@@ -11,7 +11,7 @@ from datetime import datetime
 import parser
 import database
 
-APP_VERSION = "v1.5.0"
+APP_VERSION = "v1.5.1"
 
 database.init_db()
 
@@ -189,6 +189,13 @@ def render_start_page():
                 elif problem_mode == '指定した問題番号から開始':
                     min_q_id = min([q['id'] for q in valid_questions]) if valid_questions else 1
                     max_q_id = max([q['id'] for q in valid_questions]) if valid_questions else 1
+                    
+                    # --- ここから変更 ---
+                    # エラー回避のため、現在の開始番号が新しい最小値より小さい場合はリセットする
+                    if st.session_state.start_question_id < min_q_id:
+                        st.session_state.start_question_id = min_q_id
+                    # --- ここまで変更 ---
+
                     st.session_state.start_question_id = st.number_input('開始する問題番号:', min_value=min_q_id, max_value=max_q_id, value=st.session_state.start_question_id, key='start_q_id_input')
             else:
                 st.warning("出題できる問題がありません。除外設定を確認してください。")
@@ -244,7 +251,11 @@ def render_start_page():
         st.header("更新履歴")
         st.markdown(f"**現在のバージョン: {APP_VERSION}**")
         st.markdown("---")
-        st.subheader(f"v1.5.0 ({datetime.now().strftime('%Y/%m/%d')})")
+        
+        st.subheader(f"v1.5.1 ({datetime.now().strftime('%Y/%m/%d')})")
+        st.markdown("- **バグ修正:** 問題を除外した状態で「指定した問題番号から開始」を選択するとエラーが発生する問題を修正しました。")
+        
+        st.subheader("v1.5.0")
         st.markdown("- **機能追加:** 問題番号の範囲を指定して、一括で出題対象から除外／復帰させる機能を追加しました。\n- **機能削除:** ユーザーごとの設定保存機能（簡易ログイン）を削除し、セッション内でのみ設定を保持する仕様に戻しました。")
         st.subheader("v1.3.0")
         st.markdown("- **機能改善:** Streamlitサーバーの設定 (`.streamlit/config.toml`) により、非アクティブな状態でもセッションがタイムアウトしないようにしました。")
@@ -287,6 +298,7 @@ def render_admin_debug_page():
     questions = st.session_state.all_questions_from_file
     if questions:
         data = [{"問題ID": q['id'], "判定タイプ": "判定できませんでした" if q.get('question_type') == 'unknown' else q.get('question_type'), "質問文 (先頭)": q['question'].replace('\n', ' ')[:100] + "..."} for q in sorted(questions, key=lambda x: x['id'])]
+        df = pd.DataFrame(data)
         st.dataframe(df, use_container_width=True, hide_index=True)
     st.divider()
     if st.button("トップページに戻る"): st.session_state.page = 'start'; st.rerun()
