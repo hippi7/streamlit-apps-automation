@@ -1,37 +1,40 @@
 steps:
-  # 1. コンテナイメージをビルドする
+  # ステップ1: コンテナイメージをビルドする
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
       - '-t'
-      - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/streamlit-apps-automation/streamlit-app:latest'
+      # :latest の代わりに :$SHORT_SHA を使用
+      - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/streamlit-apps-automation/streamlit-app:$SHORT_SHA'
       - '.'
 
-  # 2. ビルドしたイメージをArtifact Registryにプッシュする
+  # ステップ2: ビルドしたイメージをArtifact Registryにプッシュ(保存)する
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/streamlit-apps-automation/streamlit-app:latest'
+      # :latest の代わりに :$SHORT_SHA を使用
+      - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/streamlit-apps-automation/streamlit-app:$SHORT_SHA'
 
-  # 3. Cloud Runにデプロイする
+  # ステップ3: Artifact Registryのイメージを使ってCloud Runにデプロイする
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args:
       - 'run'
       - 'deploy'
-      - 'quiz-app-autodeploy' # ★Cloud Runのサービス名
+      - 'streamlit-sample-app'
       - '--image'
-      - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/streamlit-apps-automation/streamlit-app:latest'
+      # :latest の代わりに :$SHORT_SHA を使用
+      - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/streamlit-apps-automation/streamlit-app:$SHORT_SHA'
       - '--region'
       - 'asia-northeast1'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
 
-# ビルドしたイメージを記録
+# ビルドしたイメージの情報を記録
 images:
-  - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/streamlit-apps-automation/streamlit-app:latest'
+  # :latest の代わりに :$SHORT_SHA を使用
+  - 'asia-northeast1-docker.pkg.dev/${PROJECT_ID}/streamlit-apps-automation/streamlit-app:$SHORT_SHA'
 
-# ビルドログの保存先を指定
 options:
   logging: CLOUD_LOGGING_ONLY
